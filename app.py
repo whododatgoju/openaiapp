@@ -3,7 +3,7 @@ from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
 # Set up tabs
-tab1, tab2 = st.tabs(["💬 Chat", "🖼️ Vision"])
+tab1, tab2, tab3 = st.tabs(["💬 Chat", "🖼️ Vision", "🎨 Image Generation"])
 
 # Sidebar - OpenAI API Key Input
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
@@ -52,6 +52,36 @@ with tab2:
                     st.success(response.choices[0].message.content)
                 else:
                     st.error("Failed to generate response. Please check your API key or image URL.")
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+with tab3:
+    st.title("🎨 AI Image Generation")
+
+    prompt = st.text_area("Enter a prompt for the image:", "a white siamese cat")
+    size = st.selectbox("Select Image Size:", ["1024x1024", "512x512", "256x256"])
+    
+    if st.button("Generate Image"):
+        if not openai_api_key.startswith('sk-'):
+            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
+        else:
+            try:
+                client = OpenAIClient(api_key=openai_api_key)
+                response = client.images.generate(
+                    model="dall-e-3",
+                    prompt=prompt,
+                    size=size,
+                    quality="standard",
+                    n=1,
+                )
+
+                if response and hasattr(response, "data"):
+                    image_url = response.data[0].url
+                    st.image(image_url, caption="Generated Image", use_column_width=True)
+                    st.success("✅ Image generated successfully!")
+                else:
+                    st.error("⚠ Failed to generate image. Please try again.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
