@@ -1,125 +1,76 @@
 import streamlit as st
-import base64
+import requests
+import json
 from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
 # Set up tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "💬 Chat", "🖼️ Vision", "🎨 Image Generation", 
-    "🔊 Audio Generation", "🎙 Speech to Text", "🛑 Moderation", "🧠 Reasoning"
+    "🔊 Audio Generation", "🎙 Speech to Text", "🛑 Moderation", "🧠 Reasoning", "🛠 Functions"
 ])
 
 # Sidebar - OpenAI API Key Input
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
 
-with tab1:
-    st.title('🦜🔗 Quickstart App')
-
-    def generate_response(input_text):
-        llm = OpenAI(temperature=0.7, openai_api_key=openai_api_key)
-        st.info(llm(input_text))
-
-    with st.form('my_form'):
-        text = st.text_area('Enter text:', 'What are the three key pieces of advice for learning how to code?')
-        submitted = st.form_submit_button('Submit')
-
-        if not openai_api_key.startswith('sk-'):
-            st.warning('Please enter your OpenAI API key!', icon='⚠')
-        if submitted and openai_api_key.startswith('sk-'):
-            generate_response(text)
-
-with tab2:
-    st.title("🖼️ Vision AI")
-
-    image_url = st.text_input("Enter an Image URL:", 
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg")
-
-    if st.button("Analyze Image"):
-        if not openai_api_key.startswith('sk-'):
-            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
-        else:
-            try:
-                client = OpenAIClient(api_key=openai_api_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "user", "content": [
-                            {"type": "text", "text": "What's in this image?"},
-                            {"type": "image_url", "image_url": {"url": image_url}}
-                        ]},
-                    ],
-                    max_tokens=300,
-                )
-
-                if response and hasattr(response, "choices"):
-                    st.image(image_url, caption="Analyzed Image", use_column_width=True)
-                    st.success(response.choices[0].message.content)
-                else:
-                    st.error("Failed to generate response. Please check your API key or image URL.")
-
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-with tab3:
-    st.title("🎨 AI Image Generation")
-
-    prompt = st.text_area("Enter a prompt for the image:", "a white siamese cat")
-    size = st.selectbox("Select Image Size:", ["1024x1024", "512x512", "256x256"])
-    
-    if st.button("Generate Image"):
-        if not openai_api_key.startswith('sk-'):
-            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
-        else:
-            try:
-                client = OpenAIClient(api_key=openai_api_key)
-                response = client.images.generate(
-                    model="dall-e-3",
-                    prompt=prompt,
-                    size=size,
-                    quality="standard",
-                    n=1,
-                )
-
-                if response and hasattr(response, "data"):
-                    image_url = response.data[0].url
-                    st.image(image_url, caption="Generated Image", use_column_width=True)
-                    st.success("✅ Image generated successfully!")
-                else:
-                    st.error("⚠ Failed to generate image. Please try again.")
-
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-with tab7:
-    st.title("🧠 AI Reasoning")
+with tab8:
+    st.title("🛠 AI Functions (Tool Calling)")
 
     st.markdown("""
-    ### How Reasoning Works
-    The **O1 models** introduce **reasoning tokens**. The model uses these tokens to **"think"**, breaking down its understanding of the prompt and considering multiple approaches to generating a response.  
-    After generating reasoning tokens, the model produces an answer as **visible completion tokens**, and **discards the reasoning tokens from its context**.
+    ### How Function Calling Works
+    OpenAI's GPT-4o model can **call functions** to retrieve real-world data.  
+    In this example, the model uses the **get_weather** function to fetch the temperature of a location.
     """)
 
-    reasoning_prompt = st.text_area("Enter a problem to solve:", 
-        "Write a bash script that takes a matrix represented as a string with format '[1,2],[3,4],[5,6]' and prints the transpose in the same format.")
+    # Function to get weather data from an external API
+    def get_weather(latitude, longitude):
+        response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m")
+        data = response.json()
+        return data['current']['temperature_2m']
 
-    if st.button("Generate Reasoned Response"):
+    # User input for location
+    latitude = st.number_input("Enter Latitude:", value=48.8566)  # Default: Paris
+    longitude = st.number_input("Enter Longitude:", value=2.3522)  # Default: Paris
+
+    if st.button("Get Weather via Function Call"):
         if not openai_api_key.startswith('sk-'):
             st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
         else:
             try:
                 client = OpenAIClient(api_key=openai_api_key)
-                response = client.chat.completions.create(
-                    model="o1",
-                    messages=[
-                        {"role": "user", "content": reasoning_prompt}
-                    ]
+
+                # Define the function for GPT-4o
+                tools = [{
+                    "type": "function",
+                    "function": {
+                        "name": "get_weather",
+                        "description": "Get current temperature for provided coordinates in Celsius.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "latitude": {"type": "number"},
+                                "longitude": {"type": "number"}
+                            },
+                            "required": ["latitude", "longitude"],
+                            "additionalProperties": False
+                        },
+                        "strict": True
+                    }
+                }]
+
+                # User query
+                messages = [{"role": "user", "content": f"What's the weather like at {latitude}, {longitude} today?"}]
+
+                # Call GPT-4o with function calling
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    tools=tools,
                 )
 
-                if response and hasattr(response, "choices"):
-                    st.success("✅ Reasoning Completed!")
-                    st.write(response.choices[0].message.content)
-                else:
-                    st.error("⚠ Failed to generate reasoning response. Please try again.")
+                # Get and display the response
+                temperature = get_weather(latitude, longitude)
+                st.success(f"✅ Weather Retrieved: {temperature}°C")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
