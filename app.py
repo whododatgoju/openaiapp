@@ -4,9 +4,9 @@ from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
 # Set up tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "💬 Chat", "🖼️ Vision", "🎨 Image Generation", 
-    "🔊 Audio Generation", "🎙 Speech to Text", "🛑 Moderation"
+    "🔊 Audio Generation", "🎙 Speech to Text", "🛑 Moderation", "🧠 Reasoning"
 ])
 
 # Sidebar - OpenAI API Key Input
@@ -90,96 +90,36 @@ with tab3:
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
-with tab4:
-    st.title("🔊 AI Audio Generation")
+with tab7:
+    st.title("🧠 AI Reasoning")
 
-    text_input = st.text_area("Enter text for AI-generated speech:", "Is a golden retriever a good family dog?")
-    voice = st.selectbox("Select Voice:", ["alloy", "echo", "fable", "onyx", "nova", "shimmer"])
+    st.markdown("""
+    ### How Reasoning Works
+    The **O1 models** introduce **reasoning tokens**. The model uses these tokens to **"think"**, breaking down its understanding of the prompt and considering multiple approaches to generating a response.  
+    After generating reasoning tokens, the model produces an answer as **visible completion tokens**, and **discards the reasoning tokens from its context**.
+    """)
 
-    if st.button("Generate Audio"):
+    reasoning_prompt = st.text_area("Enter a problem to solve:", 
+        "Write a bash script that takes a matrix represented as a string with format '[1,2],[3,4],[5,6]' and prints the transpose in the same format.")
+
+    if st.button("Generate Reasoned Response"):
         if not openai_api_key.startswith('sk-'):
             st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
         else:
             try:
                 client = OpenAIClient(api_key=openai_api_key)
-                completion = client.chat.completions.create(
-                    model="gpt-4o-audio-preview",
-                    modalities=["text", "audio"],
-                    audio={"voice": voice, "format": "wav"},
-                    messages=[{"role": "user", "content": text_input}],
+                response = client.chat.completions.create(
+                    model="o1",
+                    messages=[
+                        {"role": "user", "content": reasoning_prompt}
+                    ]
                 )
 
-                if completion and hasattr(completion, "choices"):
-                    wav_bytes = base64.b64decode(completion.choices[0].message.audio.data)
-                    
-                    audio_file = "generated_audio.wav"
-                    with open(audio_file, "wb") as f:
-                        f.write(wav_bytes)
-
-                    # Display a download link
-                    st.audio(audio_file, format="audio/wav")
-                    st.success("✅ Audio generated successfully!")
-
+                if response and hasattr(response, "choices"):
+                    st.success("✅ Reasoning Completed!")
+                    st.write(response.choices[0].message.content)
                 else:
-                    st.error("⚠ Failed to generate audio. Please try again.")
-
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-with tab5:
-    st.title("🎙 Speech to Text (Transcription)")
-
-    st.write("Upload an audio file to transcribe it into text. **Supported formats:** `.mp3`, `.wav`, `.m4a`.")
-
-    uploaded_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "m4a"])
-
-    if uploaded_file is not None:
-        if not openai_api_key.startswith('sk-'):
-            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
-        else:
-            try:
-                client = OpenAIClient(api_key=openai_api_key)
-                with open(uploaded_file.name, "wb") as f:
-                    f.write(uploaded_file.read())
-
-                with open(uploaded_file.name, "rb") as audio_file:
-                    transcription = client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                    )
-
-                if transcription and hasattr(transcription, "text"):
-                    st.success("✅ Transcription Completed!")
-                    st.write(transcription.text)
-                else:
-                    st.error("⚠ Failed to transcribe audio. Please try again.")
-
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-with tab6:
-    st.title("🛑 Content Moderation")
-
-    st.write("Enter text below to check if it violates OpenAI's content policies.")
-
-    moderation_input = st.text_area("Enter text to moderate:", "This is a test message.")
-
-    if st.button("Check Moderation"):
-        if not openai_api_key.startswith('sk-'):
-            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
-        else:
-            try:
-                client = OpenAIClient(api_key=openai_api_key)
-                response = client.moderations.create(
-                    model="omni-moderation-latest",
-                    input=moderation_input,
-                )
-
-                if response:
-                    st.success("✅ Moderation Check Completed!")
-                    st.write(response)
-                else:
-                    st.error("⚠ No moderation response received.")
+                    st.error("⚠ Failed to generate reasoning response. Please try again.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
