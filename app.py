@@ -4,16 +4,20 @@ import json
 from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
-# Set up tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "💬 Chat", "🖼️ Vision", "🎨 Image Generation", 
-    "🔊 Audio Generation", "🎙 Speech to Text", "🛑 Moderation", "🧠 Reasoning", "🛠 Functions"
-])
-
 # Sidebar - OpenAI API Key Input
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
 
-with tab8:
+# Tab Selection Dropdown (Fix for Too Many Tabs)
+tab_selection = st.selectbox(
+    "Select a Feature:",
+    [
+        "💬 Chat", "🖼️ Vision", "🎨 Image Generation",
+        "🔊 Audio Generation", "🎙 Speech to Text",
+        "🛑 Moderation", "🧠 Reasoning", "🛠 Functions"
+    ]
+)
+
+if tab_selection == "🛠 Functions":
     st.title("🛠 AI Functions (Tool Calling)")
 
     st.markdown("""
