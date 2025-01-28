@@ -4,7 +4,10 @@ from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
 # Set up tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 Chat", "🖼️ Vision", "🎨 Image Generation", "🔊 Audio Generation", "🎙 Speech to Text"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "💬 Chat", "🖼️ Vision", "🎨 Image Generation", 
+    "🔊 Audio Generation", "🎙 Speech to Text", "🛑 Moderation"
+])
 
 # Sidebar - OpenAI API Key Input
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
@@ -135,14 +138,11 @@ with tab5:
             st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
         else:
             try:
-                # Save the uploaded file
-                file_path = "uploaded_audio." + uploaded_file.name.split(".")[-1]
-                with open(file_path, "wb") as f:
+                client = OpenAIClient(api_key=openai_api_key)
+                with open(uploaded_file.name, "wb") as f:
                     f.write(uploaded_file.read())
 
-                # Transcribe the audio
-                client = OpenAIClient(api_key=openai_api_key)
-                with open(file_path, "rb") as audio_file:
+                with open(uploaded_file.name, "rb") as audio_file:
                     transcription = client.audio.transcriptions.create(
                         model="whisper-1",
                         file=audio_file,
@@ -153,6 +153,33 @@ with tab5:
                     st.write(transcription.text)
                 else:
                     st.error("⚠ Failed to transcribe audio. Please try again.")
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+with tab6:
+    st.title("🛑 Content Moderation")
+
+    st.write("Enter text below to check if it violates OpenAI's content policies.")
+
+    moderation_input = st.text_area("Enter text to moderate:", "This is a test message.")
+
+    if st.button("Check Moderation"):
+        if not openai_api_key.startswith('sk-'):
+            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
+        else:
+            try:
+                client = OpenAIClient(api_key=openai_api_key)
+                response = client.moderations.create(
+                    model="omni-moderation-latest",
+                    input=moderation_input,
+                )
+
+                if response:
+                    st.success("✅ Moderation Check Completed!")
+                    st.write(response)
+                else:
+                    st.error("⚠ No moderation response received.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
