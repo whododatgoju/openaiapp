@@ -4,7 +4,7 @@ from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
 # Set up tabs
-tab1, tab2, tab3, tab4 = st.tabs(["💬 Chat", "🖼️ Vision", "🎨 Image Generation", "🔊 Audio Generation"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 Chat", "🖼️ Vision", "🎨 Image Generation", "🔊 Audio Generation", "🎙 Speech to Text"])
 
 # Sidebar - OpenAI API Key Input
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
@@ -119,6 +119,40 @@ with tab4:
 
                 else:
                     st.error("⚠ Failed to generate audio. Please try again.")
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+with tab5:
+    st.title("🎙 Speech to Text (Transcription)")
+
+    st.write("Upload an audio file to transcribe it into text. **Supported formats:** `.mp3`, `.wav`, `.m4a`.")
+
+    uploaded_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "m4a"])
+
+    if uploaded_file is not None:
+        if not openai_api_key.startswith('sk-'):
+            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
+        else:
+            try:
+                # Save the uploaded file
+                file_path = "uploaded_audio." + uploaded_file.name.split(".")[-1]
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.read())
+
+                # Transcribe the audio
+                client = OpenAIClient(api_key=openai_api_key)
+                with open(file_path, "rb") as audio_file:
+                    transcription = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                    )
+
+                if transcription and hasattr(transcription, "text"):
+                    st.success("✅ Transcription Completed!")
+                    st.write(transcription.text)
+                else:
+                    st.error("⚠ Failed to transcribe audio. Please try again.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
