@@ -161,14 +161,15 @@ elif selected_tab == "🛠 Functions":
         "Santiago, Chile": (-33.4489, -70.6693)
     }
 
-    # Select or manually enter latitude/longitude
-    location_name = st.selectbox("Select a location:", list(locations.keys()) + ["Manual Input"])
+    # User selection method (dropdown or manual entry)
+    input_method = st.radio("Choose input method:", ["Select a City", "Enter Latitude/Longitude"])
 
-    if location_name == "Manual Input":
-        latitude = st.number_input("Enter Latitude:", value=48.8566)
-        longitude = st.number_input("Enter Longitude:", value=2.3522)
-    else:
+    if input_method == "Select a City":
+        location_name = st.selectbox("Select a location:", list(locations.keys()))
         latitude, longitude = locations[location_name]
+    else:
+        latitude = st.number_input("Enter Latitude:")
+        longitude = st.number_input("Enter Longitude:")
 
     if st.button("Get Weather via Function Call"):
         if not openai_api_key.startswith('sk-'):
@@ -179,7 +180,7 @@ elif selected_tab == "🛠 Functions":
                 temp_c, temp_f, weather_description = get_weather(latitude, longitude)
 
                 if temp_c is not None:
-                    st.success(f"✅ Weather Retrieved for {location_name if location_name != 'Manual Input' else 'your custom location'}")
+                    st.success(f"✅ Weather Retrieved for {location_name if input_method == 'Select a City' else 'your custom location'}")
                     st.write(f"🌡 **Temperature:** {temp_c:.1f}°C / {temp_f:.1f}°F")
                     st.write(f"🌦 **Conditions:** {weather_description}")
                 else:
@@ -187,6 +188,7 @@ elif selected_tab == "🛠 Functions":
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+
 
 
 elif selected_tab == "🧠 Reasoning":
