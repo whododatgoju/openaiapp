@@ -102,24 +102,66 @@ elif selected_tab == "🛠 Functions":
     st.markdown("""
     ### How Function Calling Works
     OpenAI's GPT-4o model can **call functions** to retrieve real-world data.  
-    This example fetches the **temperature in both Celsius and Fahrenheit** using a weather API.
+    This example fetches the **temperature in both Celsius and Fahrenheit** along with a **weather description** using a weather API.
     """)
 
+    # Function to get weather data from Open-Meteo API
     def get_weather(latitude, longitude):
-        response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m")
-        data = response.json()
-        temp_c = data['current']['temperature_2m']
-        temp_f = (temp_c * 9/5) + 32
-        return temp_c, temp_f
+        try:
+            response = requests.get(
+                f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,weathercode&hourly=temperature_2m"
+            )
+            data = response.json()
+            temp_c = data['current']['temperature_2m']
+            temp_f = (temp_c * 9/5) + 32  # Convert Celsius to Fahrenheit
+            weather_code = data['current']['weathercode']
 
+            # Mapping weather codes to descriptions
+            weather_descriptions = {
+                0: "Clear sky ☀️",
+                1: "Mainly clear 🌤",
+                2: "Partly cloudy ⛅",
+                3: "Overcast ☁️",
+                45: "Fog 🌫",
+                48: "Rime fog 🌫❄",
+                51: "Light drizzle 🌦",
+                53: "Moderate drizzle 🌦",
+                55: "Heavy drizzle 🌧",
+                61: "Light rain 🌦",
+                63: "Moderate rain 🌧",
+                65: "Heavy rain 🌧🌧",
+                71: "Light snow 🌨",
+                73: "Moderate snow 🌨🌨",
+                75: "Heavy snow ❄️❄️❄️",
+                95: "Thunderstorms ⛈",
+                96: "Thunderstorms with light hail ⛈",
+                99: "Thunderstorms with heavy hail 🌩",
+            }
+
+            weather_description = weather_descriptions.get(weather_code, "Unknown weather condition 🤷")
+            return temp_c, temp_f, weather_description
+
+        except Exception as e:
+            return None, None, f"Error retrieving weather data: {str(e)}"
+
+    # Expanded list of locations including Miami
     locations = {
+        "Miami, USA": (25.7617, -80.1918),
         "New York, USA": (40.7128, -74.0060),
         "Los Angeles, USA": (34.0522, -118.2437),
+        "Chicago, USA": (41.8781, -87.6298),
+        "Houston, USA": (29.7604, -95.3698),
         "Toronto, Canada": (43.6532, -79.3832),
+        "Vancouver, Canada": (49.2827, -123.1207),
         "Buenos Aires, Argentina": (-34.6037, -58.3816),
         "São Paulo, Brazil": (-23.5505, -46.6333),
+        "Mexico City, Mexico": (19.4326, -99.1332),
+        "Lima, Peru": (-12.0464, -77.0428),
+        "Bogotá, Colombia": (4.7110, -74.0721),
+        "Santiago, Chile": (-33.4489, -70.6693)
     }
 
+    # Select or manually enter latitude/longitude
     location_name = st.selectbox("Select a location:", list(locations.keys()) + ["Manual Input"])
 
     if location_name == "Manual Input":
@@ -134,11 +176,18 @@ elif selected_tab == "🛠 Functions":
         else:
             try:
                 client = OpenAIClient(api_key=openai_api_key)
-                temp_c, temp_f = get_weather(latitude, longitude)
-                st.success(f"✅ Weather Retrieved: {temp_c}°C / {temp_f}°F")
+                temp_c, temp_f, weather_description = get_weather(latitude, longitude)
+
+                if temp_c is not None:
+                    st.success(f"✅ Weather Retrieved for {location_name if location_name != 'Manual Input' else 'your custom location'}")
+                    st.write(f"🌡 **Temperature:** {temp_c:.1f}°C / {temp_f:.1f}°F")
+                    st.write(f"🌦 **Conditions:** {weather_description}")
+                else:
+                    st.error("⚠ Failed to retrieve weather data. Please try again.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+
 
 elif selected_tab == "🧠 Reasoning":
     st.title("🧠 AI Reasoning")
