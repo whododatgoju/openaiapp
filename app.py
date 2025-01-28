@@ -1,9 +1,10 @@
 import streamlit as st
+import base64
 from langchain_community.llms import OpenAI
 from openai import OpenAI as OpenAIClient
 
 # Set up tabs
-tab1, tab2, tab3 = st.tabs(["💬 Chat", "🖼️ Vision", "🎨 Image Generation"])
+tab1, tab2, tab3, tab4 = st.tabs(["💬 Chat", "🖼️ Vision", "🎨 Image Generation", "🔊 Audio Generation"])
 
 # Sidebar - OpenAI API Key Input
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
@@ -42,7 +43,7 @@ with tab2:
                         {"role": "user", "content": [
                             {"type": "text", "text": "What's in this image?"},
                             {"type": "image_url", "image_url": {"url": image_url}}
-                        ]}
+                        ]},
                     ],
                     max_tokens=300,
                 )
@@ -82,6 +83,42 @@ with tab3:
                     st.success("✅ Image generated successfully!")
                 else:
                     st.error("⚠ Failed to generate image. Please try again.")
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+with tab4:
+    st.title("🔊 AI Audio Generation")
+
+    text_input = st.text_area("Enter text for AI-generated speech:", "Is a golden retriever a good family dog?")
+    voice = st.selectbox("Select Voice:", ["alloy", "echo", "fable", "onyx", "nova", "shimmer"])
+
+    if st.button("Generate Audio"):
+        if not openai_api_key.startswith('sk-'):
+            st.warning("⚠ Please enter a valid OpenAI API key!", icon="⚠")
+        else:
+            try:
+                client = OpenAIClient(api_key=openai_api_key)
+                completion = client.chat.completions.create(
+                    model="gpt-4o-audio-preview",
+                    modalities=["text", "audio"],
+                    audio={"voice": voice, "format": "wav"},
+                    messages=[{"role": "user", "content": text_input}],
+                )
+
+                if completion and hasattr(completion, "choices"):
+                    wav_bytes = base64.b64decode(completion.choices[0].message.audio.data)
+                    
+                    audio_file = "generated_audio.wav"
+                    with open(audio_file, "wb") as f:
+                        f.write(wav_bytes)
+
+                    # Display a download link
+                    st.audio(audio_file, format="audio/wav")
+                    st.success("✅ Audio generated successfully!")
+
+                else:
+                    st.error("⚠ Failed to generate audio. Please try again.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
