@@ -1,5 +1,6 @@
 import streamlit as st
 st.image("https://emarsys.com/app/uploads/2020/03/real-ai.jpg", caption="AI-Powered Streamlit App")
+st.image("https://i.imgur.com/bQtWJUI.jpg", caption="AI-Powered Streamlit App")
 import requests
 import json
 import base64
